@@ -1,0 +1,20 @@
+{% extends 'face_rec1/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Mark Attendance</h2>
+
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg">Start Camera</button>
+            </form>
+            <p class="mt-3">Press 'q' to stop the camera and save attendance</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

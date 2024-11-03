@@ -1,0 +1,49 @@
+{% extends 'face_rec1/base.html' %}
+
+{% block title %}Teacher Login - Face-Based Attendance System{% endblock %}
+
+{% block teacher_login %}
+
+    <div class="teacher-login-card">
+        <h2 class="teacher-login-title">
+            Teacher Login
+        </h2>
+
+        {% if messages %}
+        <div class="teacher-login-error">
+            {% for message in messages %}
+            <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="teacher-login-form">
+            {% csrf_token %}
+            <div class="teacher-login-input-group">
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Username"
+                    class="teacher-login-input"
+                    required
+                >
+            </div>
+            <div class="teacher-login-input-group">
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    class="teacher-login-input"
+                    required
+                >
+            </div>
+            <button
+                type="submit"
+                class="teacher-login-button"
+            >
+                Sign In
+            </button>
+        </form>
+
+</div>
+{% endblock %}

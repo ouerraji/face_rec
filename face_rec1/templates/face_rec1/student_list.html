@@ -1,0 +1,61 @@
+{% extends 'face_rec1/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">Student List</h1>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full table-auto">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Authorized</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for student in students %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ student.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ student.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ student.phone }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ student.class_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
+                                {% if student.authorized %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}">
+                                {{ student.authorized|yesno:"Yes,No" }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <form method="POST" action="{% url 'face_rec1:authorize_student' student.id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    class="{% if student.authorized %}
+                                        bg-red-500 hover:bg-red-700
+                                    {% else %}
+                                        bg-green-500 hover:bg-green-700
+                                    {% endif %}
+                                    text-white font-bold py-2 px-4 rounded">
+                                    {% if student.authorized %}Revoke{% else %}Authorize{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No students found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
