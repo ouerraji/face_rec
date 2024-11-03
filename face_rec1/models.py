@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 
 # Create your models here.
 class Student(models.Model):
@@ -21,9 +23,24 @@ class Student(models.Model):
 from django.db import models
 
 class Attendance(models.Model):
-    name = models.CharField(max_length=100)
-    status = models.CharField(max_length=20, default="Absent")
-    timestamp = models.DateTimeField(auto_now_add=True)
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='attendances',
+        null=True  # Add this temporarily
+    )
+    date = models.DateField(default=timezone.now)  # Added default
+    time_in = models.TimeField(default=timezone.now)  # Added default
+    status = models.CharField(max_length=20, choices=[
+        ('Present', 'Present'),
+        ('Absent', 'Absent'),
+        ('Late', 'Late')
+    ], default='Present')
+
+    class Meta:
+        unique_together = ['student', 'date']
 
     def __str__(self):
-        return f"{self.name} - {self.status}"
+        # Handle case where student might be None
+        student_name = self.student.name if self.student else "No Student"
+        return f"{student_name} - {self.date} - {self.status}"

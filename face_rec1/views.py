@@ -1,4 +1,5 @@
 import base64
+import datetime
 
 import cv2
 import face_recognition
@@ -104,9 +105,27 @@ def authorize_student(request, student_id):
     return redirect('face_rec1:student_list')
 
 
-
 def attendance_details(request):
-    return render(request, 'face_rec1/attendance_details.html')
+    # Get the search date from the request, default to today
+    search_date = request.GET.get('search_date')
+
+    # Base queryset
+    attendances = Attendance.objects.select_related('student').order_by('-time_in')
+
+    # Filter by date if search_date is provided
+    if search_date:
+        attendances = attendances.filter(date=search_date)
+    else:
+        # Default to today's records
+        today = timezone.now().date()
+        attendances = attendances.filter(date=today)
+
+    context = {
+        'attendances': attendances,
+        'search_date': search_date if search_date else timezone.now().date().strftime('%Y-%m-%d'),
+    }
+
+    return render(request, 'face_rec1/attendance_details.html', context)
 
 
 def mark_attendance(request):
@@ -145,33 +164,21 @@ def mark_attendance(request):
 
         print(f"Successfully loaded {len(known_face_encodings)} face encodings")
 
-        def get_optimal_font_scale(text, width):
-            """Calculate the optimal font scale based on text width"""
-            font_scale = 1
-            font = cv2.FONT_HERSHEY_DUPLEX
-            while True:
-                textSize = cv2.getTextSize(text, font, font_scale, 1)[0]
-                if textSize[0] <= width:
-                    return font_scale
-                font_scale -= 0.1
-                if font_scale <= 0.1:
-                    return 0.1
-
-        # Initialize variables for face recognition
+        # Initialize variables
         process_this_frame = True
-        # Store the latest recognition results
         current_face_locations = []
         current_face_names = []
+
+        # Keep track of recognized students to avoid duplicate records
+        recognized_students = set()
 
         while True:
             ret, frame = video_capture.read()
 
             if process_this_frame:
-                # Only process every other frame for face recognition
                 small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
                 rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
-                # Find faces and get encodings
                 face_locations = face_recognition.face_locations(rgb_small_frame)
                 face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
@@ -185,37 +192,54 @@ def mark_attendance(request):
                         best_match_index = np.argmin(face_distances)
                         if matches[best_match_index]:
                             name = known_face_names[best_match_index]
-                            print(f"{name} is recognized.")
 
-                            try:
-                                student = authorized_students.get(name=name)
-                                today = timezone.now().date()
-                                if not Attendance.objects.filter(student=student, date=today).exists():
-                                    Attendance.objects.create(
+                            # Only process attendance if we haven't seen this student yet
+                            if name not in recognized_students:
+                                try:
+                                    student = authorized_students.get(name=name)
+                                    now = timezone.now()
+                                    today = now.date()
+                                    current_time = now.time()
+
+                                    # Check if attendance record exists for today
+                                    attendance, created = Attendance.objects.get_or_create(
                                         student=student,
                                         date=today,
-                                        time=timezone.now().time(),
-                                        status="Present"
+                                        defaults={
+                                            'time_in': current_time,
+                                            'status': 'Present'
+                                        }
                                     )
-                                    print(f"Marked {name} as present.")
-                                else:
-                                    print(f"{name} already marked present today.")
-                            except Exception as e:
-                                print(f"Error marking attendance for {name}: {str(e)}")
-                                import traceback
-                                traceback.print_exc()
+
+                                    if created:
+                                        # If created after a certain time (e.g., 9 AM), mark as late
+                                        late_threshold = datetime.time(16, 0)  # 9 AM
+                                        if current_time > late_threshold:
+                                            attendance.status = 'Late'
+                                            attendance.save()
+
+                                        print(f"Marked {name} as {attendance.status} at {current_time}")
+                                    else:
+                                        print(f"{name} already marked for today at {attendance.time_in}")
+
+                                    # Add to recognized set to avoid duplicate processing
+                                    recognized_students.add(name)
+
+                                except Exception as e:
+                                    print(f"Error marking attendance for {name}: {str(e)}")
+                                    import traceback
+                                    traceback.print_exc()
 
                     face_names.append(name)
 
-                # Update the stored results only when we process a new frame
                 current_face_locations = face_locations
                 current_face_names = face_names
 
             process_this_frame = not process_this_frame
 
-            # Display results using the stored face locations and names
+            # Display results (rest of the display code remains the same)
             for (top, right, bottom, left), name in zip(current_face_locations, current_face_names):
-                # Scale back up face locations since we detected in the resized frame
+                # Scale back up face locations
                 top *= 4
                 right *= 4
                 bottom *= 4
@@ -224,24 +248,14 @@ def mark_attendance(request):
                 # Draw box
                 cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
 
-                # Calculate label background dimensions
+                # Calculate label dimensions
                 label_height = 35
                 label_width = right - left
                 cv2.rectangle(frame, (left, bottom - label_height), (right, bottom), (0, 0, 255), cv2.FILLED)
 
-                # Calculate optimal font scale
+                # Add text
                 font = cv2.FONT_HERSHEY_DUPLEX
-                font_scale = get_optimal_font_scale(name, label_width - 12)
-
-                # Get text size for centering
-                textSize = cv2.getTextSize(name, font, font_scale, 1)[0]
-
-                # Center text horizontally and vertically
-                textX = left + (label_width - textSize[0]) // 2
-                textY = bottom - (label_height - textSize[1]) // 2
-
-                # Draw text
-                cv2.putText(frame, name, (textX, textY), font, font_scale, (255, 255, 255), 1)
+                cv2.putText(frame, name, (left + 6, bottom - 6), font, 0.6, (255, 255, 255), 1)
 
             cv2.imshow('Video', frame)
 
@@ -258,5 +272,4 @@ def mark_attendance(request):
         import traceback
         traceback.print_exc()
         return render(request, 'face_rec1/mark_attendance.html', {'error': str(e)})
-
 
