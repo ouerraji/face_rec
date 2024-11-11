@@ -1,5 +1,6 @@
 import base64
 import datetime
+from datetime import timedelta
 
 import cv2
 import face_recognition
@@ -197,7 +198,7 @@ def mark_attendance(request):
                             if name not in recognized_students:
                                 try:
                                     student = authorized_students.get(name=name)
-                                    now = timezone.now()
+                                    now = timezone.now()+timedelta(hours=1)
                                     today = now.date()
                                     current_time = now.time()
 
@@ -213,7 +214,7 @@ def mark_attendance(request):
 
                                     if created:
                                         # If created after a certain time (e.g., 9 AM), mark as late
-                                        late_threshold = datetime.time(16, 0)  # 9 AM
+                                        late_threshold = datetime.time(9, 0)  # 9 AM
                                         if current_time > late_threshold:
                                             attendance.status = 'Late'
                                             attendance.save()
