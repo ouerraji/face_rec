@@ -2,7 +2,11 @@
 {% load static %}
 
 {% block content %}
+
 <div class="container mx-auto px-4 py-8 max-w-6xl">
+<a href="{% url 'face_rec1:index' %}" class="back-button">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
     <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">Student List</h1>
 
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
